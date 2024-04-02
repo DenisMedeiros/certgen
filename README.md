@@ -51,30 +51,30 @@ See all options using the help menu:
 
 ```bash
 # Top level menu.
-python3 src/certgen.py -h/--help
+python3 src/certgen/certgen.py -h/--help
 
 # Certificate add menu.
-python3 src/certgen.py add -h/--help
+python3 src/certgen/certgen.py add -h/--help
 ```
 
 Example of the creation of a CA and SSL certificate.
 
 ```bash
-python3 src/certgen.py add --subject-alt-names example.com 192.168.0.10 hostname \
+python3 src/certgen/certgen.py add --subject-alt-names example.com 192.168.0.10 hostname \
     --output-dir /tmp/
 ```
 
 Example of the creation of a CA and SSL certificate - this time, installing the CA file on the system.
 
 ```bash
-python3 src/certgen.py add --install-ca --subject-alt-names example.com 192.168.0.10 hostname \
+python3 src/certgen/certgen.py add --install-ca --subject-alt-names example.com 192.168.0.10 hostname \
     --output-dir /tmp/
 ```
 
 Example of creation of SSL certificates using existing CA cert and key files:
 
 ```bash
-python3 src/certgen.py create --subject-alt-names example.com 192.168.0.10 hostname \
+python3 src/certgen/certgen.py create --subject-alt-names example.com 192.168.0.10 hostname \
     --output-dir ./ --ca-cert-path /tmp/certgen-ca.crt --ca-key-path /tmp/certgen-ca.key
 ```
 
@@ -82,7 +82,7 @@ python3 src/certgen.py create --subject-alt-names example.com 192.168.0.10 hostn
 You can check of the certgen CA file is already installed on the system:
 
 ```bash
-python3 src/certgen.py check
+python3 src/certgen/certgen.py check
 ```
 
 Finally, you can see the content of the generated files using the `openssl` CLI if you have it in your system:
@@ -97,3 +97,12 @@ openssl x509 -inform pem -noout -text -in certgen-ca.crt
 ```
 
 **Important note**: every time a new CA file is (re)installed in the system, you may need to close and open your browser again so that it can load the system CA files.
+
+
+## Build
+
+To build the Python (wheel) package, simply run:
+
+```bash
+python3 setup.py bdist_wheel --universal
+```
