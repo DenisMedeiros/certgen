@@ -1,7 +1,7 @@
 # certgen
 
 An SSL certificate generator (and manager) for local development. This tool is able to generate a local CA certificate and from it, regular SSL certificates.
-It also installs the CA certificate to the operating system so that most browsers can recognize the SSL certificates in your local development.
+It can also install the CA certificate to the operating system so that most browsers can recognize the certgen SSL certificates in your local development.
 
 ## Installation
 
@@ -60,14 +60,24 @@ python3 src/certgen.py add -h/--help
 Example of the creation of a CA and SSL certificate.
 
 ```bash
-python3 src/certgen.py add --domains example.com 192.168.0.10 hostname --output-dir /tmp/
+python3 src/certgen.py add --subject-alt-names example.com 192.168.0.10 hostname \
+    --output-dir /tmp/
 ```
 
 Example of the creation of a CA and SSL certificate - this time, installing the CA file on the system.
 
 ```bash
-python3 src/certgen.py add --install-ca --domains example.com 192.168.0.10 hostname --output-dir /tmp/
+python3 src/certgen.py add --install-ca --subject-alt-names example.com 192.168.0.10 hostname \
+    --output-dir /tmp/
 ```
+
+Example of creation of SSL certificates using existing CA cert and key files:
+
+```bash
+python3 src/certgen.py create --subject-alt-names example.com 192.168.0.10 hostname \
+    --output-dir ./ --ca-cert-path /tmp/certgen-ca.crt --ca-key-path /tmp/certgen-ca.key
+```
+
 
 You can check of the certgen CA file is already installed on the system:
 
