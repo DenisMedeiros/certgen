@@ -53,21 +53,21 @@ See all options using the help menu:
 # Top level menu.
 python3 src/certgen/certgen.py -h/--help
 
-# Certificate add menu.
-python3 src/certgen/certgen.py add -h/--help
+# Certificate create menu.
+python3 src/certgen/certgen.py create -h/--help
 ```
 
 Example of the creation of a CA and SSL certificate.
 
 ```bash
-python3 src/certgen/certgen.py add --subject-alt-names example.com 192.168.0.10 hostname \
+python3 src/certgen/certgen.py create --subject-alt-names example.com 192.168.0.10 hostname \
     --output-dir /tmp/
 ```
 
 Example of the creation of a CA and SSL certificate - this time, installing the CA file on the system.
 
 ```bash
-python3 src/certgen/certgen.py add --install-ca --subject-alt-names example.com 192.168.0.10 hostname \
+python3 src/certgen/certgen.py create --install-ca --subject-alt-names example.com 192.168.0.10 hostname \
     --output-dir /tmp/
 ```
 

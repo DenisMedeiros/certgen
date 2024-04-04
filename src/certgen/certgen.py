@@ -30,6 +30,19 @@ HOSTNAME_RE = r"(?![0-9]+$)(?!-)[a-zA-Z0-9-]{,63}(?<!-)"
 IP_RE = r"(((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4})"
 
 
+def get_utc_now() -> datetime:
+    """Returns the datetime object representing the current moment.
+    It uses datetime.utcnow for older versions of Python.
+
+    Returns:
+        datetime: The current date time (UTC timezone).
+    """
+    try:
+        return datetime.datetime.now(tz=datetime.UTC)
+    except AttributeError:
+        return datetime.datetime.now(tz=datetime.timezone.utc)
+
+
 def validate_san(value: str) -> str:
     """
     Validates whether the given value is a valid subject alternative name (SAN).
@@ -122,7 +135,7 @@ def generate_ca(expiration: int) -> tuple[RSAPrivateKey, Certificate]:
         x509.NameAttribute(NameOID.COMMON_NAME, "CertGen CA"),
     ])
 
-    now_utc = datetime.datetime.now(tz=datetime.UTC)
+    now_utc = get_utc_now()
     ca_cert_buider = x509.CertificateBuilder(
         subject_name=ca_name,
         issuer_name=ca_name,
@@ -154,6 +167,8 @@ def get_certgen_ca_system_path(ca_cert_name: str) -> Path:
     match platform_info:
         case {"ID": "fedora"}:
             return Path(os.path.join("/etc/pki/ca-trust/source/anchors/", ca_cert_name))
+        case {"ID": "ubuntu"}:
+            return Path(os.path.join("/usr/local/share/ca-certificates/", ca_cert_name))
         case _:
             raise NotImplementedError("Unsupported operating system.")
 
@@ -206,7 +221,7 @@ def generate_cert(
     csr = csr_builder.sign(key, algorithm=hashes.SHA256(), backend=default_backend())
 
     # Generate the certificate (using certgen CA).
-    now_utc = datetime.datetime.now(tz=datetime.timezone.utc)
+    now_utc = get_utc_now()
     cert_builder = x509.CertificateBuilder(
         subject_name=csr.subject,
         issuer_name=ca_cert.issuer,
@@ -235,9 +250,7 @@ def install_certgen_ca(local_ca_cert_path: Path, ca_cert_name: str):
     """
     system_ca_cert_path = None
     platform_info = platform.freedesktop_os_release()
-    match platform_info:
-        case {"ID": "fedora"}:
-            system_ca_cert_path = Path(os.path.join("/etc/pki/ca-trust/source/anchors/", ca_cert_name))
+    system_ca_cert_path = get_certgen_ca_system_path(ca_cert_name)
 
     try:
         subprocess.run(["sudo", "cp", local_ca_cert_path, system_ca_cert_path], check=True)
@@ -245,8 +258,15 @@ def install_certgen_ca(local_ca_cert_path: Path, ca_cert_name: str):
         logging.error(f"Failed to copy certgen CA file to system folder. {err}")
         raise err
 
+    match platform_info:
+        case {"ID": "fedora"}:
+            command = ["sudo", "update-ca-trust"]
+        case {"ID": "ubuntu"}:
+            command = ["sudo", "update-ca-certificates"]
+        case _:
+            raise NotImplementedError("Unsupported operating system.")
     try:
-        subprocess.run(["sudo", "update-ca-trust"], check=True)
+        subprocess.run(command, check=True)
     except subprocess.CalledProcessError as err:
         logging.error(f"Failed to update CA trust. {err}")
         raise err
@@ -436,6 +456,15 @@ def remove_certgen_ca():
         logging.info("Aborting certgen CA removal.")
         return
 
+    platform_info = platform.freedesktop_os_release()
+    match platform_info:
+        case {"ID": "fedora"}:
+            command = ["sudo", "update-ca-trust"]
+        case {"ID": "ubuntu"}:
+            command = ["sudo", "update-ca-certificates"]
+        case _:
+            raise NotImplementedError("Unsupported operating system.")
+
     try:
         subprocess.run(["sudo", "rm", system_ca_cert_path], check=True)
     except subprocess.CalledProcessError as err:
@@ -443,7 +472,7 @@ def remove_certgen_ca():
         raise err
 
     try:
-        subprocess.run(["sudo", "update-ca-trust"], check=True)
+        subprocess.run(command, check=True)
     except subprocess.CalledProcessError as err:
         logging.error(f"Failed to update CA trust. {err}")
         raise err
@@ -482,11 +511,12 @@ def main():
     args = vars(parser.parse_args())
 
     # If the existing CA options are defined, ensure both are defined together.
-    if (
-        (args["ca_cert_path"] is not None and args["ca_key_path"] is None) or
-        (args["ca_cert_path"] is None and args["ca_key_path"] is not None)
-    ):
-        parser.error("The options '--ca-path' and '--ca-key-path' must be provided together.")
+    if args["operation"] == "create":
+        if (
+            (args["ca_cert_path"] is not None and args["ca_key_path"] is None) or
+            (args["ca_cert_path"] is None and args["ca_key_path"] is not None)
+        ):
+            parser.error("The options '--ca-path' and '--ca-key-path' must be provided together.")
 
     logging.basicConfig(
         level=logging.INFO,
